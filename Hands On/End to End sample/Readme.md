@@ -72,16 +72,6 @@ The script follows a typical machine learning workflow:
     * The script saves plots to an `images/end_to_end_project/` directory relative to where the script is run. It will create this directory if it doesn't exist.
     * It also attempts to download `california.png` into this directory for one of the visualizations if it's not found. Ensure you have an internet connection the first time you run the relevant cell if you don't have the image.
 
-## Usage
-
-1.  **Ensure Setup is Complete:** Verify Python, libraries, and the dataset path.
-2.  **Run the Script:**
-    ```bash
-    python your_script_name.py
-    ```
-    (Replace `your_script_name.py` with the actual name of the Python file).
-
-The script will execute the steps outlined above, printing information about the data, showing plots (if run in an environment that supports displaying Matplotlib figures, like Jupyter or an IDE), training models, and printing evaluation scores (RMSE). The cross-validation step for the Random Forest model might take a few minutes to run.
 
 ## Key Components & Code Structure
 
