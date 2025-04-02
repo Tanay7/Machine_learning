@@ -101,6 +101,4 @@ The script will execute the steps outlined above, printing information about the
 
 ## Notes
 
-* The script contains several "extra code" cells, often for generating specific figures or demonstrating alternative approaches discussed in the "Hands-On Machine Learning" book.
-* Pay close attention to the `HOUSING_CSV_PATH` variable and adjust it according to your environment.
 * The script sets `random_state` or `np.random.seed` in various places to ensure reproducibility.
