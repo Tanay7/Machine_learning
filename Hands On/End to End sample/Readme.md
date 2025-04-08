@@ -46,13 +46,13 @@ This project aims to predict the median house value for California districts bas
 
 ---
 
-## Project Goal 🎯
+## Project Goal
 
 The primary objective is to build a regression model that accurately predicts the median housing value 💰 in Californian districts using census data features like population, median income, location, housing age, etc.
 
 ---
 
-## Dataset 💾
+## Dataset
 
 The dataset used is the California Housing dataset, derived from the 1990 U.S. Census. Each row represents a block group (district) in California ☀️.
 
@@ -74,7 +74,7 @@ The dataset used is the California Housing dataset, derived from the 1990 U.S. C
 
 ---
 
-## Prerequisites ✅
+## Prerequisites
 
 * **Python:** Version 3.7 or higher is required (checked via `assert sys.version_info >= (3, 7)`). 🐍
 * **Scikit-Learn:** Version 1.0.1 or higher is required (checked via `assert version.parse(sklearn.__version__) >= version.parse("1.0.1")`). 🤖
@@ -91,7 +91,7 @@ It's recommended to use a virtual environment and install dependencies using a `
 
 ---
 
-## File Structure 📁
+## File Structure
 
 * **`your_notebook_name.ipynb` / `your_script_name.py`:** The main file containing the Python code for the project. 📓 </>
 * **`datasets/housing/housing.csv`:** The input dataset file. **IMPORTANT:** The path to this file is currently hardcoded in the `load_housing_data` function (`HOUSING_CSV_PATH`). You **MUST** update this path to match the location on your system. ⚠️
@@ -99,7 +99,7 @@ It's recommended to use a virtual environment and install dependencies using a `
 
 ---
 
-## Usage ▶️
+## Usage
 
 1.  **Clone the Repository (if applicable):**
     ```bash
@@ -130,16 +130,16 @@ It's recommended to use a virtual environment and install dependencies using a `
 
 ---
 
-## Workflow and Code Explanation ⚙️➡️
+## Workflow and Code Explanation
 
 The code implements a standard machine learning pipeline:
 
-### Setup and Imports ✨
+### Setup and Imports
 
 * Checks Python and Scikit-Learn versions for compatibility. ✅
 * Imports necessary libraries (Pandas, NumPy, Scikit-Learn modules, Matplotlib, etc.). 📚
 
-### Get the Data 📥
+### Get the Data
 
 #### Load Data
 
@@ -147,7 +147,7 @@ The code implements a standard machine learning pipeline:
 * It includes error handling (`FileNotFoundError`) if the specified path (`HOUSING_CSV_PATH`) is incorrect. ❌
 * **Crucially, the `HOUSING_CSV_PATH` is hardcoded and needs user modification.** ⚠️
 
-#### Initial Data Exploration 👀
+#### Initial Data Exploration
 
 * Uses Pandas functions to get a first look at the data:
     * `housing.head()`: Displays the first 5 rows.
@@ -155,13 +155,13 @@ The code implements a standard machine learning pipeline:
     * `housing["ocean_proximity"].value_counts()`: Counts unique values in the categorical feature.
     * `housing.describe()`: Provides summary statistics for numerical columns. #️⃣
 
-#### Data Visualization 🎨
+#### Data Visualization
 
 * Sets up Matplotlib default font sizes for better readability.
 * Defines a `save_fig` function to save plots as high-resolution PNGs to the `images/end_to_end_project/` directory. 💾🖼️
 * Generates histograms for all numerical attributes using `housing.hist()` to understand their distributions. 📊
 
-### Create a Test Set ✂️
+### Create a Test Set
 
 * Discusses the importance of splitting data into training and testing sets *before* extensive exploration to avoid data snooping bias. 🕵️‍♂️🚫
 * **Simple Random Split (Conceptual):** A function `shuffle_and_split_data` using `np.random.permutation` is shown but noted as potentially problematic if the dataset updates.
@@ -174,82 +174,84 @@ The code implements a standard machine learning pipeline:
     * Compares the income category proportions in the overall dataset, stratified test set, and random test set to demonstrate the benefit of stratification. ✅
     * Removes the temporary `income_cat` feature from the sets.
 
-### Discover and Visualize Data (EDA on Training Set) 🔍
+### Discover and Visualize Data (EDA on Training Set)
 
 * Creates a copy of the *stratified training set* (`strat_train_set`) for exploration to prevent modifying the original set.
 
-#### Geographical Visualization 📍🗺️
+#### Geographical Visualization
 
 * Uses scatter plots (`housing.plot(kind="scatter", ...)`) to visualize geographical data:
-    * Simple plot of latitude vs. longitude.
+    * Simple plot of latitude vs. longitude. 📍🗺️
     * Improved plot using `alpha=0.2` to handle point density.
     * Advanced plot incorporating population size (`s`) and median house value (`c`).
     * Extra code shows how to overlay a California map image for better context.
 
-#### Looking for Correlations 🔗
+#### Looking for Correlations
 
-* Calculates the standard correlation coefficient (Pearson's r) between numerical features using `housing.corr(numeric_only=True)`.
+* Calculates the standard correlation coefficient (Pearson's r) between numerical features using `housing.corr(numeric_only=True)`. 🔗
 * Focuses on correlations with the target variable (`median_house_value`). 🎯
 * Uses `pandas.plotting.scatter_matrix` to visualize correlations between promising attributes.
 * Creates a detailed scatter plot of `median_income` vs. `median_house_value`.
 
-#### Experimenting with Attribute Combinations 🧪🔬
+#### Experimenting with Attribute Combinations
 
-* Creates new features by combining existing ones, hoping to find stronger correlations:
+* Creates new features by combining existing ones, hoping to find stronger correlations: 🧪🔬
     * `rooms_per_house`
     * `bedrooms_ratio`
     * `people_per_house`
 * Re-calculates the correlation matrix to check the impact of these new features. 🤔
 
-### Prepare the Data for Machine Learning Algorithms 🛠️
+### Prepare the Data for Machine Learning Algorithms
 
 * Separates features (`housing`) and labels (`housing_labels`) from the `strat_train_set`.
 
-#### Data Cleaning (Handling Missing Values) 🧹✨
+#### Data Cleaning (Handling Missing Values)
 
-* Identifies rows with missing values (`isnull().any(axis=1)`), focusing on `total_bedrooms`. ❓
+* Identifies rows with missing values (`isnull().any(axis=1)`), focusing on `total_bedrooms`. ❓🧹✨
 * Discusses and demonstrates three options for handling NaNs: `dropna()`, `drop()`, `fillna()`.
 * Uses Scikit-Learn's `SimpleImputer(strategy="median")` as the preferred method for numerical features. ✅
 * Briefly mentions `IsolationForest` for outlier detection (code provided but commented out).
 
-#### Handling Text and Categorical Attributes 🔠🔡
+#### Handling Text and Categorical Attributes
 
-* Isolates the categorical feature `ocean_proximity`. 🌊
+* Isolates the categorical feature `ocean_proximity`. 🌊🔠🔡
 * Demonstrates `OrdinalEncoder` but notes its limitations.
 * Uses `OneHotEncoder` as the standard approach for nominal categorical features. 👍
 * Compares with Pandas `get_dummies`.
 
-#### Feature Scaling 📏
+#### Feature Scaling
 
-* Discusses the importance of feature scaling for many ML algorithms.
+* Discusses the importance of feature scaling for many ML algorithms. 📏
 * Demonstrates `MinMaxScaler` and `StandardScaler`.
 * Visualizes the effect of `np.log` transformation.
 * Discusses scaling the *target variable*. 🎯
 
-#### Custom Transformers 🧩⚙️
+#### Custom Transformers
 
-* Shows how to create simple transformers using `FunctionTransformer`.
+* Shows how to create simple transformers using `FunctionTransformer`. 🧩⚙️
 * Demonstrates building custom Scikit-Learn compatible transformers by inheriting from `BaseEstimator` and `TransformerMixin`.
 
-#### Transformation Pipelines 〰️➡️
+#### Transformation Pipelines
 
-* Combines multiple preprocessing steps into pipelines for better organization and reproducibility.
+* Combines multiple preprocessing steps into pipelines for better organization and reproducibility. 〰️➡️
 * **Numerical Pipeline:** Combines `SimpleImputer` and `StandardScaler`.
 * **Categorical Pipeline:** Combines `SimpleImputer` and `OneHotEncoder`.
 * **Combined Preprocessing Pipeline:** Uses `ColumnTransformer` to apply different pipelines to different columns. Builds a complex `preprocessing` pipeline with custom steps. ✅
 
-### Select and Train a Model 🧠🤖
+### Select and Train a Model
 
-#### Training and Evaluating on the Training Set 💪
+* *(This section header intentionally kept clean for linking)* 🧠🤖
 
-* Creates a full pipeline including preprocessing and a `LinearRegression` model.
+#### Training and Evaluating on the Training Set
+
+* Creates a full pipeline including preprocessing and a `LinearRegression` model. 💪
 * Fits the pipeline on the training data.
 * Calculates the Root Mean Squared Error (RMSE) on the *training set*.
-* Repeats the process for a `DecisionTreeRegressor`, noting its perfect score (RMSE=0) on the training set, indicating severe overfitting.  overfitting 🚨).
+* Repeats the process for a `DecisionTreeRegressor`, noting its perfect score (RMSE=0) on the training set, indicating severe overfitting. (Overfitting 🚨)
 
-#### Better Evaluation Using Cross-Validation ✔️🔄
+#### Better Evaluation Using Cross-Validation
 
-* Uses Scikit-Learn's `cross_val_score` to perform K-fold cross-validation (with `cv=10`).
+* Uses Scikit-Learn's `cross_val_score` to perform K-fold cross-validation (with `cv=10`). ✔️🔄
 * Calculates RMSE scores for the `DecisionTreeRegressor` across the 10 folds (`scoring="neg_root_mean_squared_error"`).
 * Displays the mean and standard deviation of the cross-validation RMSE scores, showing a more realistic error metric.
 * Repeats the cross-validation for the `LinearRegression` model to compare performance.
@@ -258,9 +260,9 @@ The code implements a standard machine learning pipeline:
 
 ---
 
-## Results (Preliminary) 📊🏆
+## Results (Preliminary)
 
-Based on 10-fold cross-validation on the training set:
+Based on 10-fold cross-validation on the training set: 📊🏆
 
 * **Linear Regression:**
     * Mean RMSE: ~$69,000 (example value)
@@ -273,9 +275,9 @@ Based on 10-fold cross-validation on the training set:
 
 ---
 
-## Key Concepts Demonstrated 🔑💡
+## Key Concepts Demonstrated
 
-* **End-to-End ML Workflow:** Loading -> EDA -> Splitting -> Preprocessing -> Training -> Evaluation 🔁
+* **End-to-End ML Workflow:** Loading -> EDA -> Splitting -> Preprocessing -> Training -> Evaluation 🔁🔑💡
 * **Data Loading & Handling:** `pandas`, `pathlib` 💾
 * **Exploratory Data Analysis (EDA):** `info()`, `describe()`, `value_counts()`, Histograms, Scatter Plots, Correlation 📊🔍
 * **Data Splitting:** Train/Test Split, Stratified Sampling ✂️⚖️
@@ -289,9 +291,9 @@ Based on 10-fold cross-validation on the training set:
 
 ---
 
-## Potential Next Steps 🚀
+## Potential Next Steps
 
-Based on the provided code and standard ML practices:
+Based on the provided code and standard ML practices: 🚀
 
 1.  **Train More Models:** Evaluate `RandomForestRegressor`, `GradientBoostingRegressor`, `SVR`, etc. 🌳🐘
 2.  **Hyperparameter Tuning:** Use `GridSearchCV` or `RandomizedSearchCV`. 🎛️
