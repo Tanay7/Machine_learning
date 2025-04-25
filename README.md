@@ -4,11 +4,11 @@ This repository contains notebooks and code exploring various machine learning c
 
 ## Content Overview
 
-* **Classification:** Materials related to classification tasks, including a recent update ("Delete Hands On/Classification/fdgdf").
+* **Classification:** Materials related to classification tasks.
 * **Custom Models and Training with TF:** Examples and guides on building and training custom models using TensorFlow.
 * **Decision Trees:** Exploration of decision tree algorithms.
 * **Dimensionality Reduction:** Techniques and examples for reducing the dimensionality of data.
-* **End to End sample:** A complete end-to-end machine learning example (recently updated README.md).
+* **End to End sample:** A complete end-to-end machine learning example.
 * **Ensemble Learning and Random Forest:** Concepts and implementations of ensemble methods, including Random Forests.
 * **NN with Keras:** Building and working with Neural Networks using the Keras API.
 * **SVMs:** Support Vector Machines algorithms and usage.
