@@ -5,7 +5,7 @@ import logging
 import datetime
 import configparser
 import psycopg2
-import io # Required for memory buffer
+import io
 import dedupe
 import dedupe.backport
 
@@ -18,7 +18,7 @@ OUTPUT_TABLE = 'gi_agg_entity_map_churn'
 LOG_DIR = 'Log_files'
 
 # ==========================================
-# LOGGING
+# LOGGING SETUP
 # ==========================================
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
@@ -29,10 +29,12 @@ log_file = os.path.join(LOG_DIR, f'Dedupe_Life_GI_{timestamp}.log')
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
+# Log to file
 fh = logging.FileHandler(log_file)
 fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(fh)
 
+# Log to console
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
@@ -41,7 +43,7 @@ logger.addHandler(ch)
 logger.info(f'Start time: {datetime.datetime.now()}')
 
 # ==========================================
-# DATABASE UTILITIES
+# DATABASE FUNCTIONS
 # ==========================================
 def get_connection():
     config = configparser.ConfigParser()
@@ -62,19 +64,17 @@ def get_connection():
 def bulk_copy_data(cursor, data_generator, schema, table_name):
     """
     High-Performance Batch Logic:
-    Instead of creating lists of tuples, we write to a memory text buffer 
-    and stream it using the Postgres COPY protocol.
+    Streams data using an in-memory text buffer and Postgres COPY protocol.
     """
     buffer = io.StringIO()
     count = 0
     
-    # Iterate through the generator (streaming data)
     for row in data_generator:
-        # Create a TSV (Tab Separated) line for the DB
+        # Write tab-separated row to buffer
         buffer.write(f"{row[0]}\t{row[1]}\t{row[2]}\n")
         count += 1
         
-        # BATCH LOGIC: Flush buffer every 5MB to keep RAM usage low
+        # Flush buffer every 5MB to optimize RAM usage
         if buffer.tell() > 1024 * 1024 * 5: 
             buffer.seek(0)
             cursor.copy_expert(f"COPY {schema}.{table_name} (cust_id, cluster_id, cluster_score) FROM STDIN", buffer)
@@ -89,7 +89,7 @@ def bulk_copy_data(cursor, data_generator, schema, table_name):
     return count
 
 # ==========================================
-# MAIN LOGIC
+# MAIN EXECUTION
 # ==========================================
 def main():
     conn, schema = get_connection()
@@ -105,12 +105,13 @@ def main():
         """
         c.execute(query)
         
+        # Load data into Dictionary for dedupe
         columns = ['id', 'name_only', 'gender', 'dob', 'address', 'occupation', 'bank_acct_no']
         data_d = {}
         
-        # Load data into Dict, handling NULLs instantly
         for row in c:
             row_dict = dict(zip(columns, row))
+            # Handle NULL values immediately (convert to empty string)
             clean_row = {k: (v if v is not None else '') for k, v in row_dict.items()}
             data_d[clean_row['id']] = clean_row
 
@@ -122,12 +123,11 @@ def main():
             with open(SETTINGS_FILE, 'rb') as sf:
                 deduper = dedupe.StaticDedupe(sf)
         else:
-            logger.error(f"Settings file '{SETTINGS_FILE}' not found. Please run training.")
+            logger.error(f"Settings file '{SETTINGS_FILE}' not found.")
             sys.exit(1)
 
         # 3. CLUSTERING
         logger.info('Clustering data...')
-        # Returns a generator (lazy evaluation)
         clustered_dupes_gen = deduper.partition(data_d, threshold=0.5)
 
         # 4. WRITE TO DB (OPTIMIZED COPY)
@@ -143,7 +143,7 @@ def main():
             TRUNCATE TABLE {schema}.{OUTPUT_TABLE};
         """)
 
-        # Generator that yields clean tuples for the copy buffer
+        # Generator to format data for the copy buffer
         def record_stream():
             for cluster_id, (records, scores) in enumerate(clustered_dupes_gen):
                 for cust_id, score in zip(records, scores):
@@ -165,6 +165,7 @@ def main():
 
     except Exception as e:
         logger.error(f"Critical Error: {str(e)}")
+        # Email notification removed
         sys.exit(1)
     finally:
         c.close()
