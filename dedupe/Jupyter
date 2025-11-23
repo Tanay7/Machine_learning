@@ -1,0 +1,220 @@
+Here is the optimized code broken down into **Jupyter Notebook cells**.
+
+Run these blocks one by one. This structure allows you to inspect the data (e.g., check `len(data_d)`) between steps to ensure everything looks correct before moving on.
+
+### Cell 1: Imports and Setup
+
+*Run this to load libraries and set your working directory.*
+
+```python
+import os
+import sys
+import logging
+import datetime
+import configparser
+import psycopg2
+import io
+import dedupe
+import dedupe.backport
+
+# Set your directory
+# os.chdir(r'Y:\Life_GI_Dedupe\Test Scripts') 
+
+# Configuration Paths
+SETTINGS_FILE = 'PSQL_life_gi_data__learned_settings'
+INPUT_TABLE = 'gi_agg_data_churn'
+OUTPUT_TABLE = 'gi_agg_entity_map_churn'
+LOG_DIR = 'Log_files'
+
+# Setup Logging to print to the cell output
+logger = logging.getLogger()
+logger.handlers = [] # Clear existing handlers to prevent duplicate logs in Jupyter
+logger.setLevel(logging.DEBUG)
+
+# Console Handler (Visual progress)
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+# File Handler (Persistent log)
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+log_file = os.path.join(LOG_DIR, f'Dedupe_Life_GI_{timestamp}.log')
+fh = logging.FileHandler(log_file)
+fh.setFormatter(formatter)
+logger.addHandler(fh)
+
+logger.info(f"Environment ready. Log file: {log_file}")
+```
+
+### Cell 2: Define Helper Functions
+
+*Run this to load the Database connection logic and the High-Speed Copy function into memory.*
+
+```python
+def get_connection():
+    """Establishes a connection to the database."""
+    config = configparser.ConfigParser()
+    config.read('PSQL_config_file.ini')
+    s = config['connection_settings']
+    
+    conn = psycopg2.connect(
+        dbname=s['database'],
+        user=s['username'],
+        password=s['password'],
+        host=s['hostname'],
+        sslmode='require',
+        connect_timeout=10
+    )
+    conn.autocommit = True 
+    return conn, s['schema']
+
+def bulk_copy_data(cursor, data_generator, schema, table_name):
+    """
+    Streams data using an in-memory text buffer and Postgres COPY protocol.
+    """
+    buffer = io.StringIO()
+    count = 0
+    batch_count = 0
+    
+    for row in data_generator:
+        # Write tab-separated row to buffer
+        buffer.write(f"{row[0]}\t{row[1]}\t{row[2]}\n")
+        count += 1
+        
+        # Flush buffer every 5MB
+        if buffer.tell() > 1024 * 1024 * 5: 
+            buffer.seek(0)
+            cursor.copy_expert(f"COPY {schema}.{table_name} (cust_id, cluster_id, cluster_score) FROM STDIN", buffer)
+            buffer.truncate(0)
+            buffer.seek(0)
+            batch_count += 1
+            if batch_count % 5 == 0:
+                print(f"   ... Streamed {count} rows so far ...")
+
+    # Flush remaining
+    if buffer.tell() > 0:
+        buffer.seek(0)
+        cursor.copy_expert(f"COPY {schema}.{table_name} (cust_id, cluster_id, cluster_score) FROM STDIN", buffer)
+
+    return count
+
+print("Functions defined.")
+```
+
+### Cell 3: Connect and Load Data
+
+*Run this to fetch data from Postgres and load it into RAM. Watch the output for the record count.*
+
+```python
+conn, schema = get_connection()
+c = conn.cursor()
+
+logger.info(f'Importing data from {INPUT_TABLE}...')
+
+query = f"""
+    SELECT id, name_only, gender, dob, address, occupation, bank_acct_no 
+    FROM {schema}.{INPUT_TABLE}
+"""
+c.execute(query)
+
+columns = ['id', 'name_only', 'gender', 'dob', 'address', 'occupation', 'bank_acct_no']
+data_d = {}
+
+# Dictionary comprehension for fast cleaning
+for row in c:
+    row_dict = dict(zip(columns, row))
+    # Convert None to empty string
+    clean_row = {k: (v if v is not None else '') for k, v in row_dict.items()}
+    data_d[clean_row['id']] = clean_row
+
+logger.info(f'Success: {len(data_d)} records loaded into memory.')
+```
+
+### Cell 4: Initialize Dedupe
+
+*Run this to load your trained settings file.*
+
+```python
+if os.path.exists(SETTINGS_FILE):
+    logger.info(f'Reading settings from {SETTINGS_FILE}')
+    with open(SETTINGS_FILE, 'rb') as sf:
+        deduper = dedupe.StaticDedupe(sf)
+    logger.info("Dedupe initialized successfully.")
+else:
+    logger.error(f"CRITICAL: Settings file '{SETTINGS_FILE}' not found.")
+    raise FileNotFoundError("Run your training script first!")
+```
+
+### Cell 5: Run Clustering
+
+*Run this to generate the clusters. This step prepares the generator but doesn't write to the DB yet.*
+
+```python
+logger.info('Starting Clustering (Partitioning)...')
+
+# threshold=0.5 is standard, adjust if your precision/recall needs tuning
+clustered_dupes_gen = deduper.partition(data_d, threshold=0.5)
+
+logger.info('Clustering generator created. Ready to write to DB.')
+```
+
+### Cell 6: Write Results to Database
+
+*Run this to stream the results into the database. This is where the heavy writing happens.*
+
+```python
+try:
+    logger.info(f'Preparing table {OUTPUT_TABLE}...')
+
+    # Create UNLOGGED table (skips WAL logging for 2x speed)
+    c.execute(f"""
+        CREATE UNLOGGED TABLE IF NOT EXISTS {schema}.{OUTPUT_TABLE} (
+            cust_id VARCHAR(255),
+            cluster_id INT,
+            cluster_score FLOAT
+        );
+        TRUNCATE TABLE {schema}.{OUTPUT_TABLE};
+    """)
+
+    logger.info('Streaming results to DB...')
+
+    # Helper generator to format data for COPY
+    def record_stream():
+        # Enumerate gives us a unique cluster ID
+        for cluster_id, (records, scores) in enumerate(clustered_dupes_gen):
+            for cust_id, score in zip(records, scores):
+                yield (str(cust_id), cluster_id, score)
+
+    # Execute High-Speed Copy
+    total_rows = bulk_copy_data(c, record_stream(), schema, OUTPUT_TABLE)
+    
+    logger.info(f"Done! Successfully wrote {total_rows} records.")
+
+except Exception as e:
+    logger.error(f"Error during writing: {e}")
+    conn.rollback()
+    raise e
+```
+
+### Cell 7: Validation & Cleanup
+
+*Run this to verify the count matches your expectations and close the connection.*
+
+```python
+c.execute(f'SELECT COUNT(*) FROM {schema}.{OUTPUT_TABLE}')
+count = c.fetchone()[0]
+
+if count == 0:
+    logger.warning(f"ALERT: Output table {OUTPUT_TABLE} is empty.")
+else:
+    logger.info(f"VALIDATION SUCCESS: {count} records found in {OUTPUT_TABLE}.")
+
+# Clean up
+c.close()
+conn.close()
+logger.info("Connection closed. Process complete.")
+```
