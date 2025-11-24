@@ -3,7 +3,7 @@ import os
  #os.chdir('Y:\Life_GI_Dedupe\Test Scripts')
 import dedupe
 import dedupe.backport
-
+from psycopg2.extras import execute_values
 import base64
 import configparser
 import csv
@@ -265,4 +265,5 @@ else:
 
 c.close()
 connection.close()
+
 logger.info('End time: {}'.format((datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'))))
